@@ -1,0 +1,138 @@
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <semaphore.h>
+#include <pthread.h>
+#include <unistd.h>
+#include <sys/queue.h> 
+#define N_CARS  1
+#define N_RIDERS 5
+#define T_WANDER 10
+#define T_BUMP 40
+
+int COUNT_DOWN = 10;
+int ramblers[N_RIDERS] = {0}; //Initialize all the riders to idle
+int cars[N_CARS] = {0}; //Initialize all the cars to idle
+int position[N_RIDERS] = {-1};
+int backOfLine = 0;
+sem_t takeATicket;
+sem_t riders[N_RIDERS];
+int finish(){
+    if (COUNT_DOWN == 0) return 1; else return 0;
+};
+
+void *Rider(int);
+void GetInLine(int);
+void TakeASeat(int);
+void TakeARide(int);
+void Wander(int, int);
+
+void *Car(int);
+void Load(int);
+void Unload(int);
+void Display(int);
+void bump(int,int);
+
+
+int main()
+{
+     sem_init(&takeATicket, 1, 0);
+    for(int i = 0; i < N_RIDERS; i++)
+        sem_init(&riders[i], 1, 0);
+        
+    pthread_t funHavers[N_RIDERS];
+    pthread_t cars[N_CARS];
+    for(int i = 0; i < N_RIDERS; i++){
+        pthread_create(&funHavers[i],NULL, Rider,i);
+    }
+    for(int i = 0; i < N_CARS; i++){
+        pthread_create(&cars[i],NULL, Car,i);
+    }
+    
+    sleep(1000);
+    return 0;
+}
+
+void *Rider(int rid){
+   
+    while (1)
+    {
+        Wander(rid, rand()%T_WANDER);
+        
+        GetInLine(rid);
+        
+        TakeASeat(rid);
+        TakeARide(rid);
+        
+        
+    }
+    
+}
+void *Car(int cid){
+    while(1){
+        Load(cid);
+        Unload(cid);
+         bump(cid, rand()%T_WANDER);
+        
+    }
+};
+void GetInLine(int rid){
+    ramblers[rid] = 2; //Waiting;
+    sem_wait(&takeATicket);
+    position[backOfLine] = rid;
+    backOfLine++;
+    sem_post(&takeATicket);
+      sem_wait(&riders[rid]); // Get in line and lock itself
+      ramblers[rid] = 0;
+      return;
+};
+void TakeASeat(int rid){
+    sem_wait(&takeATicket);
+    backOfLine--;
+    //move everyone up
+    for(int i = 0; i < (N_RIDERS-1); i++){
+        position[i] = position[i+1]; 
+        
+    }
+    sem_post(&takeATicket);
+    return;
+};
+void TakeARide(int rid){};
+void Wander(int rid, int interval){
+    ramblers[rid] = 1; //Wandering;
+    sleep(interval);
+     ramblers[rid] = 0; //Idle;
+
+    
+    
+};
+
+void Load(int cid){
+    int gotSomeone = 0;
+    int rid = 0;
+        while(gotSomeone == 0){
+  printf("dude at position 0 is %d" , ramblers[position[0]]);
+                if(ramblers[position[0]] == 2){ //presuming more riders than cars
+                 rid = position[0];
+                 cars[cid] = rid;
+                 printf("%d has picked up %d", cid, rid);
+                sem_post(&riders[rid]);
+                return;
+                
+            }
+            
+        }
+   
+    
+};
+void Unload(int cid){
+
+};
+void bump(int cid, int interval){
+
+};
+void Display(int dummy){
+};
+
+
